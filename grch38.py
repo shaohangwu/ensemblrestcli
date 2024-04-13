@@ -1,13 +1,20 @@
 import typer
 from typing import List
+# 用于Http网络请求
+import pprint
 import requests
 
+# 创建一个typer实例对象
 app=typer.Typer()
+# 使用装饰器来标识一个函数为命令行命令
+# @表示装饰符或者表示矩阵乘法
 @app.command()
+# get()方法，从服务器上获取资源，参数以？开头，以&隔开，用于对少量资源获取，不安全
 def archive_id_get(id: str,callback=None):
-  print(requests.get(f"https://rest.ensembl.org/archive/id/{id}", headers={"Content-Type": "application/json"},params=dict(callback=callback,format=format),).json())
+  pprint.pprint(requests.get(f"https://rest.ensembl.org/archive/id/{id}", headers={"Content-Type": "application/json"},params=dict(callback=callback,format=format),).json())
 
 @app.command()
+# post方法是用去请求数据，可以对大量数据请求，是安全的
 def archive_id_post(id: List[str],callback=None):
   print(requests.post(f"https://rest.ensembl.org/archive/id", headers={"Content-Type": "application/json"},params=dict(callback=callback),json={"id": id},).json())
 
@@ -356,11 +363,10 @@ def sequence_id_post(id: List[str],callback=None, db_type=None, end=None, expand
 def sequence_region(region: str, species: str,callback=None, coord_system=None, coord_system_version=None, expand_3prime=None, expand_5prime=None, format=None, mask=None, mask_feature=None):
   print(requests.get(f"https://rest.ensembl.org/sequence/region/{species}/{region}", headers={"Content-Type": "application/json"},params=dict(callback=callback, coord_system=coord_system, coord_system_version=coord_system_version, expand_3prime=expand_3prime, expand_5prime=expand_5prime, format=format, mask=mask, mask_feature=mask_feature),).json())
 
-# python .\test.py sequence-region-post X:1000000..1000100:1 ABBA01004489.1:1..100 human
-# {'error': 'No results found'}
+# python .\grch38.py sequence-region-post X:1000000..1000100:1 ABBA01004489.1:1..100 human
 @app.command()
 def sequence_region_post(region: List[str],species: str,callback=None, coord_system=None, coord_system_version=None, expand_3prime=None, expand_5prime=None, format=None, mask=None, mask_feature=None):
-  print(requests.post(f"https://rest.ensembl.org/sequence/region/{species}", headers={"Content-Type": "application/json"},params=dict(callback=callback, coord_system=coord_system, coord_system_version=coord_system_version, expand_3prime=expand_3prime, expand_5prime=expand_5prime, format=format, mask=mask, mask_feature=mask_feature),json={"regionss": region},).json())
+  print(requests.post(f"https://rest.ensembl.org/sequence/region/{species}", headers={"Content-Type": "application/json"},params=dict(callback=callback, coord_system=coord_system, coord_system_version=coord_system_version, expand_3prime=expand_3prime, expand_5prime=expand_5prime, format=format, mask=mask, mask_feature=mask_feature),json={"regions": region},).json())
 
 # Transcript Haplotypes----80
 @app.command()
@@ -448,9 +454,17 @@ def beacon_get(callback=None):
 
 # python .\test.py beacon-query-get C GRCh38 '__VAR(GA4GH_beacon_end)__' G 9 22125503 '__VAR(GA4GH_beacon_variantType)__'
 # 运行有问题--94
+# @app.command()
+# def beacon_query_get(alternateBases: str, assemblyId: str, end: str, referenceBases: str, referenceName: str, start: str, variantType: str,callback=None, datasetIds=None, includeResultsetResponses=None):
+#   print(requests.get(f"https://rest.ensembl.org/ga4gh/beacon/query", headers={"Content-Type": "application/json"},params=dict(callback=callback, datasetIds=datasetIds, includeResultsetResponses=includeResultsetResponses),).json())
+#  python .\grch38.py beacon-query-get --alternatebases C --start 22125503 --referencebases G  --assemblyid GRCh38  --referencename 9
 @app.command()
-def beacon_query_get(alternateBases: str, assemblyId: str, end: str, referenceBases: str, referenceName: str, start: str, variantType: str,callback=None, datasetIds=None, includeResultsetResponses=None):
-  print(requests.get(f"https://rest.ensembl.org/ga4gh/beacon/query", headers={"Content-Type": "application/json"},params=dict(callback=callback, datasetIds=datasetIds, includeResultsetResponses=includeResultsetResponses),).json())
+def beacon_query_get(alternateBases=None, assemblyId=None, end=None, referenceBases=None, referenceName=None, start=None, variantType=None,callback=None, datasetIds=None, includeResultsetResponses=None):
+  print(requests.get(f"https://rest.ensembl.org/ga4gh/beacon/query", headers={"Content-Type": "application/json"},params=dict(
+    alternateBases=alternateBases,assemblyId=assemblyId,end=end,referenceBases=referenceBases,referenceName=referenceName,start=start,variantType=variantType,
+    callback=callback, datasetIds=datasetIds, includeResultsetResponses=includeResultsetResponses),).json())
+
+
 
 # python .\test.py beacon-query-post --referencename 9
 @app.command()
@@ -511,7 +525,7 @@ def gafeatureset_id(id: str,callback=None):
 def gavariant_id(id: str,callback=None):
   print(requests.get(f"https://rest.ensembl.org/ga4gh/variants/{id}", headers={"Content-Type": "application/json"},params=dict(callback=callback),).json())
 
-# 有问题---105
+# .\grch38.exe gavariantannotations --pagesize 2  --variantannotationsetid Ensembl --referencename 22 --start 25000000 --end 25194457
 @app.command()
 def gavariantannotations(variantAnnotationSetId=None,callback=None, effects=None, end=None, pageSize=None, pageToken=None, referenceId=None, referenceName=None, start=None):
   print(requests.post(f"https://rest.ensembl.org/ga4gh/variantannotations/search", headers={"Content-Type": "application/json"},
@@ -567,5 +581,7 @@ def VariantAnnotationSet(variantSetId=None,callback=None, pageSize=None, pageTok
 def VariantAnnotationSet_id(id: str,callback=None):
   print(requests.get(f"https://rest.ensembl.org/ga4gh/variantannotationsets/{id}", headers={"Content-Type": "application/json"},params=dict(callback=callback),).json())
 
+# ：__name__ 是当前模块名，通过程序入口main函数,当模块被直接运行时模块名为 __main__ 。当模块被直接运行时，代码将被运行，当模块是被导入时，代码不被运行
 if __name__ == "__main__":
+    # 使用命令行解析器，运行应用程序
     app()

@@ -1,44 +1,79 @@
+# requests库用于对http进行请求
 import requests
+# 用于处理网络波动、服务器繁忙、请求失败、重传间隔等操作
 from requests.adapters import HTTPAdapter, Retry
+# 导入pandas库主要用于对表格进行爬取
 import pandas as pd
+# 用于对字符串进行操作，可以读取、写入和修改字符串
 from io import StringIO
+# 用于解析url
 from urllib.parse import urlsplit, urljoin
+# 网络爬虫的解析库(对于HTML或者xml数据进行解析)
 from bs4 import BeautifulSoup
+# 正则表达式——用于字符串匹配和替换字符串
 import re
 server = "http://rest.ensembl.org"
+# 建立网络请求会话，从客户端连接到服务器开始到断开
 session = requests.Session()
+# 创建适配器对象
 adapter = HTTPAdapter(
+# 限流算法的实现
 max_retries=Retry(
-backoff_factor=3600 / 55000,
-respect_retry_after_header=True,
-status_forcelist=[429],
-allowed_methods=["GET", "POST"],
+backoff_factor=3600 / 55000,#重传时间间隔
+respect_retry_after_header=True,#Http的响应标头
+status_forcelist=[429],#429表示请求太多，重传
+allowed_methods=["GET", "POST"],#对get、post的http方法下设置限流
 )
 )
+# 为特定协议和主机设置自定义请求的适配器，方便发送和处理HTTP请求
 session.mount(server, adapter)
 
-
+# 使用get方法返回response对象
 response=session.get(server)
+# 使用BeautifulSoup库对http请求返回的对象进行解析
 soup=BeautifulSoup(response.text, 'lxml')
 urls=[]
+# 使用BeautifulSoup库中的CSS选择器进行爬虫，获取接口的url地址
 for i in soup.select("body > div > table > tbody > tr > td > a"):
+# append()在列表的末尾添加新的元素
     urls.append(i.get("href"))
+    print(i.get("href"))
 
 
 # 有必选参数
 def func0(url):
+    # 响应头在Chrome浏览器的网页上：右键 ——> 检查 ——> Network ——> Doc ——> 在 Name 里找到对应的请求文件 ——> 在右边选择 Headers 标签页，找到“Request Headers”，就可以看到我们发送给服务器的 headers。
     headers={'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'}
+    # 使用get方法传入url等参数进去具体接口详情页，获取返回对象
     response=session.get(url, headers=headers)
-    df0=pd.read_html(StringIO(response.text))[0]
+    # 使用read_html方法获取表格数据，转化为DFrame对象
+    df0=pd.read_html(StringIO(response.text))[0]#第一个表格
     df1=pd.read_html(StringIO(response.text))[1]
     # df2=pd.read_html(StringIO(response.text))[2]
+    # 解析接口详细页面
     soup=BeautifulSoup(response.text, 'lxml')
+    # 遍历表格name列的列表获取必选参数，通过",".join把必选参数通过,隔开方式，拼接在一起为一个新的字符串
+    # tolist()是返回一个列表
+    # f格式{}嵌入遍历得到的变量
     required=", ".join(f"{i}: str" for i in [i for i in df0["Name"].tolist()])
     optional=", ".join(i for i in [f"{i}=None" for i in df1["Name"].tolist()])
+    # 拼接字符,dict是字典,是一种无序的可变的序列.每一个键值之间用:隔开
     params="params=dict("+", ".join(f"{i}={i}" for i in [i for i in df1["Name"].tolist()])+")"
     for i in soup.select("#title"):
+        # 如果开头匹配到是get
+        # startswith判断字符串以什么开头
         if i.text.startswith("GET "):
+            # re.sub正则表达式用于替换字符串
+            # r原生字符串
+            # \w匹配多个字母下划线
+            # \1反向引用,引用以前已经匹配到字符串
+            # removeprefix去除指定的前缀
+            # https://rest.ensembl.org/archive/id/需要的
+            # https://rest.ensembl.org/documentation/info/archive_id_get
             endpoint=re.sub(r":(\w+)", r"{\1}", i.text.removeprefix("GET "))
+            # urlsplit(url).path.split("/")[-1]
+            # 解析url地址,以"/"分割后提取最后的部分作为函数名
+            # f是格式化字符串,可以在字符串中添加变量的值
             return "@app.command()"+"\n"+"def "+urlsplit(url).path.split("/")[-1]+"("+required+","+optional+")"+":"+"\n"+'  print(requests.get('+f'f"https://rest.ensembl.org/{endpoint}"'+", "+'headers={"Content-Type": "application/json"}'+","+params+","+").json())"
 
         elif i.text.startswith("POST "):
@@ -47,7 +82,7 @@ def func0(url):
 
 
 # 无必选参数
-
+# 读取表格不同
 def func1(url):
     headers={'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'}
     response=session.get(url, headers=headers)
